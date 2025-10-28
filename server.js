@@ -25,6 +25,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
+app.get('/', (req, res) => {
+  res.json({ message: 'Mgnrega Tracker Api is working properly!' });
+});
+
 // Fetch data on server start
 fetchAndStoreData().catch(err => console.error('Initial data fetch failed:', err));
 
