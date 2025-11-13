@@ -1,3 +1,57 @@
+// // const express = require('express');
+// // const cors = require('cors');
+// // const cron = require('node-cron');
+// // require('dotenv').config();
+
+// // const connectDB = require('./config/db');
+// // const apiRoutes = require('./routes/api');
+// // const { fetchAndStoreData } = require('./services/mgnregaService');
+
+// // const app = express();
+// // const PORT = process.env.PORT || 5000;
+
+// // // Middleware
+// // app.use(cors());
+// // app.use(express.json());
+
+// // // Connect to MongoDB
+// // connectDB();
+
+// // // Routes
+// // app.use('/api', apiRoutes);
+
+// // // Health check
+// // app.get('/health', (req, res) => {
+// //   res.json({ status: 'OK', timestamp: new Date() });
+// // });
+
+// // app.get('/', (req, res) => {
+// //   res.json({ message: 'Mgnrega Tracker Api is working properly!' });
+// // });
+
+// // // Fetch data on server start
+// // fetchAndStoreData().catch(err => console.error('Initial data fetch failed:', err));
+
+// // // Schedule daily data refresh at 2 AM
+// // cron.schedule('0 2 * * *', () => {
+// //   console.log('Running scheduled data refresh...');
+// //   fetchAndStoreData().catch(err => console.error('Scheduled fetch failed:', err));
+// // });
+
+// // // Manual refresh endpoint
+// // app.post('/api/refresh-data', async (req, res) => {
+// //   try {
+// //     await fetchAndStoreData();
+// //     res.json({ message: 'Data refresh completed successfully' });
+// //   } catch (error) {
+// //     res.status(500).json({ error: 'Data refresh failed', details: error.message });
+// //   }
+// // });
+
+// // app.listen(PORT, () => {
+// //   console.log(`🚀 Server running on port ${PORT}`);
+// // });
+
 // const express = require('express');
 // const cors = require('cors');
 // const cron = require('node-cron');
@@ -10,8 +64,18 @@
 // const app = express();
 // const PORT = process.env.PORT || 5000;
 
-// // Middleware
-// app.use(cors());
+// // ✅ FIXED CORS Configuration - Remove trailing slash
+// app.use(cors({
+//   origin: [
+//     'https://mgnrega-tracker-frontend.vercel.app',  // No trailing slash!
+//     'http://localhost:3000',
+//     'http://localhost:3001'
+//   ],
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
+
 // app.use(express.json());
 
 // // Connect to MongoDB
@@ -26,30 +90,36 @@
 // });
 
 // app.get('/', (req, res) => {
-//   res.json({ message: 'Mgnrega Tracker Api is working properly!' });
+//   res.json({ message: 'MGNREGA Tracker API is working!' });
 // });
 
-// // Fetch data on server start
-// fetchAndStoreData().catch(err => console.error('Initial data fetch failed:', err));
+// // START SERVER FIRST, then fetch data
+// app.listen(PORT, () => {
+//   console.log(`🚀 Server running on port ${PORT}`);
+//   console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+  
+//   // Fetch data in background after server starts
+//   setTimeout(() => {
+//     fetchAndStoreData()
+//       .then(() => console.log('✅ Initial data loaded'))
+//       .catch(err => console.error('❌ Data fetch failed:', err));
+//   }, 2000);
+// });
 
-// // Schedule daily data refresh at 2 AM
+// // Schedule daily refresh
 // cron.schedule('0 2 * * *', () => {
-//   console.log('Running scheduled data refresh...');
+//   console.log('🔄 Running scheduled data refresh...');
 //   fetchAndStoreData().catch(err => console.error('Scheduled fetch failed:', err));
 // });
 
-// // Manual refresh endpoint
+// // Manual refresh
 // app.post('/api/refresh-data', async (req, res) => {
 //   try {
 //     await fetchAndStoreData();
-//     res.json({ message: 'Data refresh completed successfully' });
+//     res.json({ success: true, message: 'Data refresh completed' });
 //   } catch (error) {
-//     res.status(500).json({ error: 'Data refresh failed', details: error.message });
+//     res.status(500).json({ success: false, error: error.message });
 //   }
-// });
-
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running on port ${PORT}`);
 // });
 
 const express = require('express');
@@ -64,10 +134,10 @@ const { fetchAndStoreData } = require('./services/mgnregaService');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ FIXED CORS Configuration - Remove trailing slash
+// CORS Configuration
 app.use(cors({
   origin: [
-    'https://mgnrega-tracker-frontend.vercel.app',  // No trailing slash!
+    'https://mgnrega-tracker-frontend.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001'
   ],
@@ -84,40 +154,87 @@ connectDB();
 // Routes
 app.use('/api', apiRoutes);
 
-// Health check
+// Health check with keep-alive logging
+let healthCheckCount = 0;
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date() });
+  healthCheckCount++;
+  const now = new Date();
+  
+  // Log every 10th health check to avoid spam
+  if (healthCheckCount % 10 === 0) {
+    console.log(`💚 Keep-alive ping #${healthCheckCount} at ${now.toLocaleTimeString()}`);
+  }
+  
+  res.json({ 
+    status: 'OK', 
+    timestamp: now,
+    uptime: process.uptime(),
+    checks: healthCheckCount
+  });
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'MGNREGA Tracker API is working!' });
+  res.json({ 
+    message: 'MGNREGA Tracker API is working!',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      districts: '/api/districts',
+      stats: '/api/stats/summary'
+    }
+  });
 });
 
 // START SERVER FIRST, then fetch data
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 CORS enabled for Vercel frontend`);
   
   // Fetch data in background after server starts
   setTimeout(() => {
+    console.log('📊 Starting initial data fetch...');
     fetchAndStoreData()
-      .then(() => console.log('✅ Initial data loaded'))
-      .catch(err => console.error('❌ Data fetch failed:', err));
+      .then(() => console.log('✅ Initial data loaded successfully'))
+      .catch(err => console.error('❌ Data fetch failed:', err.message));
   }, 2000);
 });
 
-// Schedule daily refresh
+// Schedule daily refresh at 2 AM
 cron.schedule('0 2 * * *', () => {
-  console.log('🔄 Running scheduled data refresh...');
-  fetchAndStoreData().catch(err => console.error('Scheduled fetch failed:', err));
+  console.log('🔄 Running scheduled data refresh at 2 AM...');
+  fetchAndStoreData()
+    .then(() => console.log('✅ Scheduled refresh completed'))
+    .catch(err => console.error('❌ Scheduled fetch failed:', err.message));
 });
 
-// Manual refresh
+// Manual refresh endpoint
 app.post('/api/refresh-data', async (req, res) => {
   try {
+    console.log('🔄 Manual data refresh triggered');
     await fetchAndStoreData();
-    res.json({ success: true, message: 'Data refresh completed' });
+    res.json({ 
+      success: true, 
+      message: 'Data refresh completed successfully',
+      timestamp: new Date()
+    });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Manual refresh failed:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Data refresh failed',
+      message: error.message 
+    });
   }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('💥 Unhandled Promise Rejection:', err.message);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received, shutting down gracefully...');
+  process.exit(0);
 });
