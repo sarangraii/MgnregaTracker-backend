@@ -64,15 +64,21 @@ const { fetchAndStoreData } = require('./services/mgnregaService');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS with proper origin
+// ✅ FIXED CORS Configuration - Remove trailing slash
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: [
+    'https://mgnrega-tracker-frontend.vercel.app',  // No trailing slash!
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// Connect to MongoDB with error handling
+// Connect to MongoDB
 connectDB();
 
 // Routes
